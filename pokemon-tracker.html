@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon Card Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 0.3rem;
+      color: #ffcb05;
+      text-shadow: 0 0 20px #ffcb0555;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #888;
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; }
+
+    .add-form {
+      background: #16213e;
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin-bottom: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr auto auto;
+      gap: 0.6rem;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.72rem;
+      color: #888;
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input, select {
+      width: 100%;
+      background: #0f0f23;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      color: #eee;
+      padding: 0.5rem 0.7rem;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    input:focus, select:focus { border-color: #ffcb05; }
+
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    .btn-add { background: #ffcb05; color: #1a1a2e; }
+    .btn-clear-all { background: #333; color: #aaa; font-size: 0.8rem; padding: 0.5rem 0.8rem; }
+
+    .search-row {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+
+    .search-row input { flex: 1; }
+
+    .stats {
+      font-size: 0.8rem;
+      color: #888;
+      white-space: nowrap;
+    }
+
+    .card-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .card-item {
+      background: #16213e;
+      border: 1px solid #2a2a4a;
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+    .card-name {
+      font-weight: 600;
+      flex: 1;
+      font-size: 0.95rem;
+    }
+
+    .card-set {
+      font-size: 0.8rem;
+      color: #aaa;
+      min-width: 120px;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-mint     { background: #1a472a; color: #4ade80; }
+    .badge-near-mint { background: #1a3547; color: #60cdff; }
+    .badge-played   { background: #3d2f00; color: #ffcb05; }
+    .badge-damaged  { background: #3d1515; color: #f87171; }
+
+    .qty-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .qty-btn {
+      background: #0f0f23;
+      color: #eee;
+      border: 1px solid #2a2a4a;
+      border-radius: 6px;
+      width: 26px;
+      height: 26px;
+      font-size: 1rem;
+      padding: 0;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qty-num { min-width: 1.5rem; text-align: center; font-size: 0.9rem; }
+
+    .btn-delete {
+      background: transparent;
+      color: #555;
+      font-size: 1.1rem;
+      padding: 0 0.3rem;
+      transition: color 0.15s;
+    }
+
+    .btn-delete:hover { color: #f87171; opacity: 1; }
+
+    .empty {
+      text-align: center;
+      color: #555;
+      padding: 3rem 0;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 580px) {
+      .add-form { grid-template-columns: 1fr 1fr; }
+      .card-set { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>⚡ Pokémon Card Tracker</h1>
+  <p class="subtitle">Your personal collection — saved in your browser</p>
+
+  <div class="add-form">
+    <div class="field">
+      <label>Card Name</label>
+      <input id="cardName" type="text" placeholder="e.g. Charizard ex" />
+    </div>
+    <div class="field">
+      <label>Set</label>
+      <input id="cardSet" type="text" placeholder="e.g. Prismatic Evolutions" />
+    </div>
+    <div class="field">
+      <label>Condition</label>
+      <select id="cardCondition">
+        <option value="mint">Mint</option>
+        <option value="near-mint" selected>Near Mint</option>
+        <option value="played">Played</option>
+        <option value="damaged">Damaged</option>
+      </select>
+    </div>
+    <button class="btn-add" onclick="addCard()">+ Add</button>
+  </div>
+
+  <div class="search-row">
+    <input id="search" type="text" placeholder="Search by name or set…" oninput="render()" />
+    <span class="stats" id="stats"></span>
+    <button class="btn-clear-all" onclick="clearAll()">Clear All</button>
+  </div>
+
+  <div class="card-list" id="cardList"></div>
+</div>
+
+<script>
+  const CONDITION_LABELS = {
+    'mint': 'Mint',
+    'near-mint': 'Near Mint',
+    'played': 'Played',
+    'damaged': 'Damaged',
+  };
+
+  let collection = JSON.parse(localStorage.getItem('pokemon-collection') || '[]');
+
+  function save() {
+    localStorage.setItem('pokemon-collection', JSON.stringify(collection));
+  }
+
+  function addCard() {
+    const name = document.getElementById('cardName').value.trim();
+    const set  = document.getElementById('cardSet').value.trim();
+    const cond = document.getElementById('cardCondition').value;
+    if (!name) { document.getElementById('cardName').focus(); return; }
+
+    collection.unshift({ id: Date.now(), name, set, condition: cond, qty: 1 });
+    save();
+    document.getElementById('cardName').value = '';
+    document.getElementById('cardSet').value = '';
+    render();
+  }
+
+  function changeQty(id, delta) {
+    const card = collection.find(c => c.id === id);
+    if (!card) return;
+    card.qty = Math.max(1, card.qty + delta);
+    save();
+    render();
+  }
+
+  function deleteCard(id) {
+    collection = collection.filter(c => c.id !== id);
+    save();
+    render();
+  }
+
+  function clearAll() {
+    if (collection.length === 0) return;
+    if (confirm('Remove all cards from your collection?')) {
+      collection = [];
+      save();
+      render();
+    }
+  }
+
+  function render() {
+    const query = document.getElementById('search').value.toLowerCase();
+    const filtered = query
+      ? collection.filter(c =>
+          c.name.toLowerCase().includes(query) ||
+          c.set.toLowerCase().includes(query))
+      : collection;
+
+    const total = collection.reduce((s, c) => s + c.qty, 0);
+    document.getElementById('stats').textContent =
+      `${collection.length} card${collection.length !== 1 ? 's' : ''} · ${total} total`;
+
+    const list = document.getElementById('cardList');
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty">${
+        collection.length === 0
+          ? 'No cards yet — add your first one above.'
+          : 'No cards match your search.'
+      }</div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(card => `
+      <div class="card-item">
+        <div class="card-name">${esc(card.name)}</div>
+        <div class="card-set">${esc(card.set)}</div>
+        <span class="badge badge-${card.condition}">${CONDITION_LABELS[card.condition]}</span>
+        <div class="qty-controls">
+          <button class="qty-btn" onclick="changeQty(${card.id}, -1)">−</button>
+          <span class="qty-num">×${card.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${card.id}, +1)">+</button>
+        </div>
+        <button class="btn-delete" onclick="deleteCard(${card.id})" title="Remove">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.getElementById('cardName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addCard();
+  });
+
+  render();
+</script>
+</body>
+</html>

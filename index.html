@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Built Apps</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f1a;
+      color: #ddd;
+      min-height: 100vh;
+      padding: 3rem 1rem;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.3rem;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #555;
+      font-size: 0.8rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    a.card {
+      display: block;
+      background: #16213e;
+      border: 1px solid #1e2a4a;
+      border-radius: 14px;
+      padding: 1.4rem 1.2rem;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+
+    a.card:hover {
+      border-color: #4a6fa5;
+      transform: translateY(-2px);
+    }
+
+    .card-icon { font-size: 2rem; margin-bottom: 0.7rem; }
+
+    .card-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #eee;
+      margin-bottom: 0.3rem;
+    }
+
+    .card-desc {
+      font-size: 0.78rem;
+      color: #666;
+      line-height: 1.4;
+    }
+
+    .card-tag {
+      display: inline-block;
+      margin-top: 0.7rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: #0f0f23;
+      color: #4a6fa5;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+    }
+
+    .add-card {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: transparent;
+      border: 1px dashed #2a2a4a;
+      border-radius: 14px;
+      padding: 1.4rem 1.2rem;
+      color: #444;
+      font-size: 0.85rem;
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+  <h1>Built Apps</h1>
+  <p class="subtitle">Local tools built with Claude Code · Open any to launch</p>
+
+  <div class="grid">
+
+    <a class="card" href="pokemon-tracker.html">
+      <div class="card-icon">⚡</div>
+      <div class="card-name">Pokémon Card Tracker</div>
+      <div class="card-desc">Add, search, and track your card collection by set and condition. Saves in browser.</div>
+      <span class="card-tag">Collection</span>
+    </a>
+
+    <!-- Add new apps below this line. Copy the block above and update the href, icon, name, and desc. -->
+
+    <div class="add-card">
+      <span>+ New apps appear here</span>
+    </div>
+
+  </div>
+</body>
+</html>

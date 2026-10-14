@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Eevee Pricer</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a23;
+      --surface2: #22222e;
+      --border: #2e2e3e;
+      --text: #e8e8f0;
+      --dim: #8888a0;
+      --accent: #8b5cf6;
+      --accent2: #a78bfa;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --shadow: 0 2px 16px rgba(0,0,0,0.5);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      min-height: 100vh;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);
+    }
+    img { max-width: 100%; }
+    button { cursor: pointer; font-family: inherit; }
+
+    /* ── Header ── */
+    .header {
+      position: sticky;
+      top: env(safe-area-inset-top, 0px);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 100;
+    }
+    .logo { font-size: 20px; }
+    .title { font-size: 17px; font-weight: 700; color: var(--accent2); flex: 1; }
+    .mode-toggle {
+      display: flex;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .mode-btn {
+      padding: 5px 13px;
+      border-radius: 6px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      background: transparent;
+      color: var(--dim);
+      transition: all 0.15s;
+    }
+    .mode-btn.sell-active { background: var(--green); color: #fff; }
+    .mode-btn.buy-active  { background: var(--amber); color: #000; }
+    .settings-btn {
+      background: none; border: none;
+      color: var(--dim); font-size: 20px; padding: 2px 4px;
+    }
+
+    /* ── Main ── */
+    .main { padding: 14px; max-width: 600px; margin: 0 auto; }
+
+    /* ── Upload ── */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 18px;
+      padding: 28px 16px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--surface);
+      margin-bottom: 14px;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .upload-area:active, .upload-area.over {
+      border-color: var(--accent);
+      background: var(--surface2);
+    }
+    .upload-icon { font-size: 36px; margin-bottom: 6px; }
+    .upload-title { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+    .upload-sub { font-size: 13px; color: var(--dim); }
+    #fileInput { display: none; }
+
+    /* ── Processing ── */
+    .proc-bar {
+      display: none;
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      color: var(--dim);
+      font-size: 14px;
+      align-items: center;
+      gap: 8px;
+    }
+    .proc-bar.on { display: flex; }
+    .proc-label { flex: 1; }
+    .btn-stop {
+      background: none; border: 1px solid var(--border);
+      color: var(--dim); border-radius: 8px;
+      padding: 4px 10px; font-size: 12px; cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-stop:active { opacity: 0.7; }
+    .spin {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Result cards ── */
+    .results { display: flex; flex-direction: column; gap: 12px; }
+    .rcard {
+      background: var(--surface);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .rcard-head {
+      display: flex;
+      align-items: flex-start;
+      padding: 12px 13px;
+      gap: 11px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rthumb {
+      width: 54px; height: 76px;
+      object-fit: cover; border-radius: 6px; flex-shrink: 0;
+      background: var(--surface2);
+    }
+    .rinfo { flex: 1; min-width: 0; }
+    .rname {
+      font-weight: 700; font-size: 15px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .rset { color: var(--dim); font-size: 12px; margin-top: 2px; display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+    .set-edit {
+      background: transparent; border: none; border-bottom: 1px dashed rgba(255,255,255,0.2);
+      color: var(--dim); font-size: 12px; font-family: inherit; padding: 0; outline: none;
+      min-width: 80px; max-width: 160px; flex-shrink: 1;
+    }
+    .set-edit:focus { border-bottom-color: var(--accent); color: var(--fg); }
+    .num-edit {
+      background: transparent; border: none; border-bottom: 1px dashed rgba(255,255,255,0.2);
+      color: var(--dim); font-size: 12px; font-family: inherit; padding: 0; outline: none;
+      width: 60px;
+    }
+    .num-edit:focus { border-bottom-color: var(--accent); color: var(--fg); }
+    .rtags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+    .tag {
+      font-size: 11px; font-weight: 600; padding: 2px 8px;
+      border-radius: 4px; display: inline-block;
+    }
+    .tag-nm  { background: #064e3b; color: #6ee7b7; }
+    .tag-lp  { background: #1e3a5f; color: #93c5fd; }
+    .tag-mp  { background: #3d2b00; color: #fbbf24; }
+    .tag-hp  { background: #4c1d1d; color: #fca5a5; }
+    .tag-holo { background: #2d1b69; color: #c4b5fd; }
+    .tag-rev  { background: #1a2a1a; color: #86efac; }
+    .tag-warn { background: #4c1d1d; color: #fca5a5; }
+    .tag-good { background: #064e3b; color: #6ee7b7; }
+
+    /* Price grid */
+    .price-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+    }
+    .pcell { background: var(--surface); padding: 10px 8px; text-align: center; }
+    .plabel {
+      font-size: 10px; color: var(--dim);
+      text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px;
+    }
+    .pval { font-size: 19px; font-weight: 700; }
+    .pval.suggest { color: var(--green); }
+    .pval.dim { color: var(--dim); font-size: 13px; }
+    .est-badge { font-size: 8px; color: var(--amber); font-weight: 600; vertical-align: middle; letter-spacing: 0; }
+    .tag-off { background: transparent; border: 1px solid var(--border); color: var(--dim); opacity: 0.5; }
+    button.tag { cursor: pointer; border: none; font-family: inherit; }
+    button.tag:active { opacity: 0.7; }
+
+    /* Action row */
+    .action-row {
+      display: flex; gap: 7px; padding: 10px 11px;
+    }
+    .btn {
+      flex: 1; padding: 10px 6px;
+      border-radius: 10px; border: none;
+      font-size: 12px; font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-ghost { background: var(--surface2); color: var(--text); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-amber { background: var(--amber); color: #000; }
+    .btn-added { background: #064e3b; color: #6ee7b7; }
+
+    /* Price adjustment */
+    .price-adj {
+      display: flex; align-items: center; gap: 6px;
+      padding: 0 11px 10px;
+    }
+    .price-adj label { font-size: 12px; color: var(--dim); white-space: nowrap; }
+    .price-input {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 10px; color: var(--text);
+      font-size: 16px; font-weight: 700; text-align: center;
+    }
+    .price-input:focus { outline: none; border-color: var(--accent); }
+
+    /* Buy list match */
+    .buy-match {
+      padding: 10px 13px;
+      border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--dim);
+    }
+    .buy-match strong { color: var(--text); }
+
+    /* ── Quote bar ── */
+    .quote-bar {
+      display: none;
+      position: fixed;
+      bottom: env(safe-area-inset-bottom, 0px);
+      left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      z-index: 90;
+      align-items: center;
+      gap: 10px;
+    }
+    .quote-bar.on { display: flex; }
+    .quote-info { flex: 1; }
+    .quote-info strong { display: block; font-size: 14px; }
+    .quote-info span { font-size: 12px; color: var(--dim); }
+    .btn-copy-quote {
+      padding: 10px 18px;
+      background: var(--green); color: #fff;
+      border-radius: 10px; border: none;
+      font-size: 14px; font-weight: 700;
+    }
+    .btn-copy-quote:active { opacity: 0.7; }
+
+    /* ── Settings modal ── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); z-index: 200;
+      align-items: flex-end;
+    }
+    .overlay.on { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: 20px 20px 0 0;
+      padding: 22px 18px;
+      padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .modal h2 { font-size: 17px; margin-bottom: 18px; }
+    .fgroup { margin-bottom: 16px; }
+    .flabel { font-size: 12px; color: var(--dim); margin-bottom: 5px; display: block; }
+    .finput {
+      width: 100%; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 11px 13px; color: var(--text);
+      font-size: 14px; font-family: monospace;
+    }
+    .finput:focus { outline: none; border-color: var(--accent); }
+    .fhint { font-size: 11px; color: var(--dim); margin-top: 4px; }
+    .fhint a { color: var(--accent2); text-decoration: none; }
+    .modal-btns { display: flex; gap: 8px; margin-top: 6px; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 80px; left: 50%;
+      transform: translateX(-50%);
+      background: #333; color: #fff;
+      padding: 9px 18px; border-radius: 20px;
+      font-size: 13px; z-index: 300;
+      white-space: nowrap; pointer-events: none;
+      animation: toastAnim 2.5s forwards;
+    }
+    @keyframes toastAnim {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(8px); }
+      15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+      75%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 400px) {
+      .price-grid { grid-template-columns: 1fr 1fr 1fr; }
+      .pval { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <span class="logo">🦊</span>
+  <span class="title">Eevee Pricer</span>
+  <div class="mode-toggle">
+    <button class="mode-btn sell-active" id="btnSell" onclick="setMode('sell')">Sell</button>
+    <button class="mode-btn" id="btnBuy" onclick="setMode('buy')">Buy</button>
+  </div>
+  <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📸</div>
+    <div class="upload-title" id="upTitle">Buyer's card photos</div>
+    <div class="upload-sub" id="upSub">Tap/click to select · drag &amp; drop · or Ctrl+V to paste</div>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+
+  <div class="proc-bar" id="procBar">
+    <span class="proc-label"><span class="spin"></span><span id="procText">Identifying cards…</span></span>
+    <button class="btn-stop" onclick="stopProcessing()">✕ Stop</button>
+  </div>
+
+  <div class="results" id="results"></div>
+
+</div>
+
+<!-- Quote bar -->
+<div class="quote-bar" id="quoteBar">
+  <div class="quote-info">
+    <strong id="quoteCount">0 cards</strong>
+    <span id="quoteTotal"></span>
+  </div>
+  <button class="btn-copy-quote" onclick="copyQuote()">Copy Quote</button>
+</div>
+
+<!-- Settings modal -->
+<div class="overlay" id="settingsOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <h2>⚙️ Settings</h2>
+    <div class="fgroup">
+      <label class="flabel">Google Gemini API Key (free)</label>
+      <input type="password" class="finput" id="inGemini" placeholder="AIza…" autocomplete="off">
+      <div class="fhint">Free at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> → Get API key</div>
+    </div>
+    <div class="fgroup">
+      <label class="flabel">PokemonPriceTracker API Key (free — optional but recommended)</label>
+      <input type="password" class="finput" id="inPC" placeholder="your-key-here" autocomplete="off">
+      <div class="fhint">Free at <a href="https://www.pokemonpricetracker.com/api" target="_blank">pokemonpricetracker.com/api</a> → Sign up free → API Keys · Shows NM/LP/MP prices</div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-accent" style="flex:2" onclick="saveSettings()">Save</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeSettings()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────
+// BUY LIST  (cards Yu Ping regularly restocks)
+// ─────────────────────────────────────────────
+const BUY_LIST = [
+  // ── Vintage / High value ──────────────────
+  { name:"Eevee", set:"Call of Legends",         num:null,      cond:"LP",  avg:2.70 },
+  { name:"Eevee", set:"Rising Rivals",           num:null,      cond:"MP",  avg:1.40 },
+  { name:"Eevee", set:"Undaunted",               num:"47",      cond:"LP",  avg:2.18 },
+  { name:"Eevee", set:"Undaunted",               num:"48",      cond:"LP",  avg:2.20 },
+  { name:"Eevee", set:"Majestic Dawn",           num:"62",      cond:"MP",  avg:1.90 },
+  { name:"Eevee", set:"Majestic Dawn",           num:"63",      cond:"MP",  avg:1.50 },
+  { name:"Eevee", set:"Dark Explorers",          num:"84",      cond:"LP",  avg:1.69 },
+  { name:"Eevee", set:"Plasma Freeze",           num:"89",      cond:"LP",  avg:1.12 },
+  { name:"Eevee", set:"Plasma Freeze",           num:"90",      cond:"LP",  avg:1.14 },
+  { name:"Eevee", set:"Team Rocket",             num:null,      cond:"LP",  avg:1.60 },
+  { name:"Eevee", set:"Jungle",                  num:null,      cond:"LP",  avg:0.80 },
+  { name:"Eevee", set:"SM - Ultra Prism",        num:"105",     cond:"NM",  avg:1.63 },
+  { name:"Eevee", set:"SM - Cosmic Eclipse",     num:"167/236", cond:"NM",  avg:1.40 },
+  { name:"Umbreon", set:"Black and White Promos",num:"BW93",    cond:"LP",  avg:40.00 },
+  { name:"Umbreon", set:"SV03: Obsidian Flames", num:null,      cond:"NM",  avg:2.97, note:"Rev Holo" },
+  { name:"Jolteon", set:"Call of Legends",       num:null,      cond:"MP",  avg:1.14 },
+  { name:"Jolteon", set:"SV: Scarlet & Violet Promo Cards", num:"169", cond:"LP", avg:0.99, note:"Cosmos Holo" },
+  { name:"All-Night Party", set:"XY - BREAKpoint", num:null,   cond:"MP",  avg:1.80 },
+  // ── Mid value ────────────────────────────
+  { name:"Eevee", set:"XY - Furious Fists",      num:null,      cond:"LP",  avg:0.85 },
+  { name:"Eevee", set:"XY - Ancient Origins",    num:null,      cond:"LP",  avg:0.60 },
+  { name:"Eevee", set:"SM - Ultra Prism",        num:"104",     cond:"NM",  avg:1.00 },
+  { name:"Eevee", set:"SM - Base Set",           num:null,      cond:"NM",  avg:0.45 },
+  { name:"Eevee", set:"SM - Lost Thunder",       num:null,      cond:"LP",  avg:0.40 },
+  { name:"Eevee", set:"Hidden Fates",            num:"49",      cond:"LP",  avg:0.34 },
+  { name:"Eevee", set:"SWSH07: Evolving Skies",  num:null,      cond:"NM",  avg:0.55 },
+  { name:"Eevee", set:"SWSH10: Astral Radiance", num:null,      cond:"NM",  avg:0.33 },
+  { name:"Umbreon", set:"McDonald's Promos 2024",num:null,      cond:"LP",  avg:1.20 },
+  { name:"Umbreon", set:"SV: Prismatic Evolutions", num:null,  cond:"LP",  avg:0.57, note:"Holo" },
+  // ── Bulk / Low value ─────────────────────
+  { name:"Eevee", set:"Shining Fates",           num:null,      cond:"LP",  avg:0.25 },
+  { name:"Eevee", set:"Pokemon GO",              num:null,      cond:"LP",  avg:0.24 },
+  { name:"Eevee", set:"SWSH04: Vivid Voltage",   num:null,      cond:"NM",  avg:0.30 },
+  { name:"Eevee", set:"SWSH08: Fusion Strike",   num:null,      cond:"LP",  avg:0.22 },
+  { name:"Eevee", set:"SV: Prismatic Evolutions",num:null,      cond:"LP",  avg:0.18 },
+  { name:"Eevee", set:"SV: Scarlet & Violet 151",num:null,      cond:"LP",  avg:0.20 },
+  { name:"Eevee", set:"SV03: Obsidian Flames",   num:null,      cond:"LP",  avg:0.24 },
+  { name:"Eevee", set:"SV: Shrouded Fable",      num:null,      cond:"LP",  avg:0.28 },
+  { name:"Eevee", set:"SV06: Twilight Masquerade",num:"135/167",cond:"LP",  avg:0.23 },
+  { name:"Eevee", set:"SV07: Stellar Crown",     num:null,      cond:"LP",  avg:0.22 },
+  { name:"Eevee", set:"SV08: Surging Sparks",    num:null,      cond:"LP",  avg:0.18 },
+  { name:"Eevee", set:"McDonald's Promos 2024",  num:null,      cond:"NM",  avg:0.38 },
+  { name:"Umbreon", set:"SV03: Obsidian Flames", num:null,      cond:"NM",  avg:0.36, note:"Uncommon" },
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let mode = 'sell';
+const quoteMap = new Map(); // cardId → { name, price }
+const cardMap  = new Map(); // cardId → { imgUrl, card, pricing }
+let cardCounter = 0;
+let abortCtrl = null;
+
+// ─────────────────────────────────────────────
+// SETTINGS
+// ─────────────────────────────────────────────
+const gKey = () => localStorage.getItem('gk') || '';
+const pcKey = () => localStorage.getItem('pck') || '';
+
+function openSettings() {
+  document.getElementById('inGemini').value = gKey();
+  document.getElementById('inPC').value = pcKey();
+  document.getElementById('settingsOverlay').classList.add('on');
+}
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('on');
+}
+function overlayClick(e) {
+  if (e.target === document.getElementById('settingsOverlay')) closeSettings();
+}
+function saveSettings() {
+  localStorage.setItem('gk', document.getElementById('inGemini').value.trim());
+  localStorage.setItem('pck', document.getElementById('inPC').value.trim());
+  closeSettings();
+  toast('Settings saved ✓');
+}
+
+// ─────────────────────────────────────────────
+// MODE TOGGLE
+// ─────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnSell').className = 'mode-btn' + (m === 'sell' ? ' sell-active' : '');
+  document.getElementById('btnBuy').className  = 'mode-btn' + (m === 'buy'  ? ' buy-active'  : '');
+  document.getElementById('fileInput').multiple = (m === 'sell');
+  document.getElementById('upTitle').textContent = m === 'sell' ? "Buyer's card photos" : "Card to restock";
+  document.getElementById('upSub').textContent   = m === 'sell' ? 'Tap to select · multiple OK' : 'Tap to select photo';
+  clearResults();
+}
+
+// ─────────────────────────────────────────────
+// FILE INPUT
+// ─────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files.length) processFiles([...e.target.files]);
+  e.target.value = '';
+});
+
+// Paste from clipboard (Ctrl+V / screenshot paste)
+document.addEventListener('paste', e => {
+  const items = [...(e.clipboardData?.items || [])].filter(i => i.type.startsWith('image/'));
+  if (!items.length) return;
+  e.preventDefault();
+  const files = items.map(i => i.getAsFile()).filter(Boolean);
+  if (files.length) processFiles(files);
+});
+
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+  if (files.length) processFiles(files);
+});
+
+// ─────────────────────────────────────────────
+// PROCESSING
+// ─────────────────────────────────────────────
+async function processFiles(files) {
+  if (!gKey()) { openSettings(); toast('Add your Google API key first'); return; }
+  clearResults();
+  abortCtrl = new AbortController();
+  setProc(true, `Analyzing ${files.length} image${files.length > 1 ? 's' : ''}…`);
+  try {
+    await Promise.all(files.map(f => processOne(f)));
+  } finally {
+    abortCtrl = null;
+    setProc(false);
+    updateQuoteBar();
+  }
+}
+function stopProcessing() {
+  abortCtrl?.abort();
+  abortCtrl = null;
+  setProc(false);
+  toast('Stopped');
+}
+function cycleCond(id) {
+  const d = cardMap.get(id); if (!d) return;
+  const order = ['NM','LP','MP','HP'];
+  const i = order.indexOf(d.card.conditionEstimate || 'NM');
+  d.card.conditionEstimate = order[(i + 1) % order.length];
+  updateCard(id, d);
+}
+
+async function getAIPriceEstimate(name, set, number) {
+  try {
+    const q = [name, set, number].filter(Boolean).join(' ');
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${gKey()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `TCGplayer NM and LP market prices in USD for Pokemon card: "${q}". Return ONLY JSON: {"priceNM": number_or_null, "priceLP": number_or_null}` }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 80 }
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    const j = JSON.parse(m[0]);
+    return {
+      market: j.priceNM ? parseFloat(j.priceNM) : null,
+      lp:     j.priceLP ? parseFloat(j.priceLP) : null,
+      mp: null, isEstimate: true
+    };
+  } catch(e) { return null; }
+}
+
+async function correctCard(id) {
+  const d = cardMap.get(id);
+  if (!d) return;
+  const newSet = document.getElementById(`si${id}`)?.value?.trim() || d.card.set;
+  const newNum = document.getElementById(`ni${id}`)?.value?.trim() || '';
+  const setChanged = newSet.toLowerCase() !== (d.card.set || '').toLowerCase();
+  const numChanged = newNum !== (d.card.number || '');
+  if (!setChanged && !numChanged) { toast('No change'); return; }
+  d.card.set = newSet;
+  // If the set changed, wipe the number (it was from the wrong ID) unless user also typed a new one
+  if (setChanged && newNum === (d.card.number || '')) {
+    d.card.number = '';
+    const numEl = document.getElementById(`ni${id}`);
+    if (numEl) numEl.value = '';
+  } else {
+    d.card.number = newNum;
+  }
+  d.card._tcgVerified = false;
+  toast('Re-pricing…');
+
+  // Try PPT pricing first (HTTPS only), then text-only Gemini estimate (works everywhere)
+  let pricing = null;
+  if (pcKey()) {
+    try { pricing = await fetchPricing(d.card); } catch(e) {}
+  }
+  if (!pricing) {
+    pricing = await getAIPriceEstimate(d.card.name, d.card.set, d.card.number);
+  }
+  if (pricing) d.pricing = pricing;
+
+  cardMap.set(id, d);
+  updateCard(id, d);
+  toast(`Updated: ${d.card.set} #${d.card.number}`);
+}
+
+async function processOne(file) {
+  const id = ++cardCounter;
+  const fullImgUrl = URL.createObjectURL(file);
+  addCard(id, { imgUrl: fullImgUrl, loading: true });
+  try {
+    const b64 = await toB64(file);
+    const cards = await identifyCard(b64, 'image/jpeg'); // always returns array
+
+    async function priceCard(card) {
+      let pricing = null;
+      if (pcKey()) {
+        try { pricing = await fetchPricing(card); } catch(e) { console.warn('PPT pricing failed:', e.message); }
+      }
+      if (!pricing && (card.priceNM || card.priceLP)) {
+        pricing = {
+          market: card.priceNM ? parseFloat(card.priceNM) : null,
+          lp:     card.priceLP ? parseFloat(card.priceLP) : null,
+          mp:     null, isEstimate: true
+        };
+      }
+      return pricing;
+    }
+
+    // Always use the full original image as thumbnail — bbox crop was unreliable
+    const [imgUrls, pricings] = await Promise.all([
+      Promise.resolve(cards.map(() => fullImgUrl)),
+      Promise.all(cards.map(card => priceCard(card)))
+    ]);
+
+    // First card replaces the loading placeholder
+    const firstData = { imgUrl: imgUrls[0], card: cards[0], pricing: pricings[0] };
+    cardMap.set(id, firstData);
+    updateCard(id, firstData);
+
+    // Additional cards from same image get inserted immediately after
+    let prevEl = document.getElementById(`rc${id}`);
+    for (let i = 1; i < cards.length; i++) {
+      const newId = ++cardCounter;
+      const cardData = { imgUrl: imgUrls[i], card: cards[i], pricing: pricings[i] };
+      cardMap.set(newId, cardData);
+      const el = document.createElement('div');
+      el.className = 'rcard'; el.id = `rc${newId}`;
+      el.innerHTML = renderCard(newId, cardData);
+      prevEl.after(el);
+      prevEl = el;
+    }
+  } catch (err) {
+    updateCard(id, { imgUrl: fullImgUrl, error: err.message });
+  }
+}
+
+// ─────────────────────────────────────────────
+// GEMINI VISION
+// ─────────────────────────────────────────────
+const MODELS = [
+  'gemini-3.8-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+];
+
+async function identifyCard(b64, mime) {
+  let lastErr;
+  for (const model of MODELS) {
+    try { return await identifyCardOnce(b64, mime, model); }
+    catch(err) {
+      lastErr = err;
+      console.warn(`Model ${model} failed:`, err.message);
+      if (err.name === 'AbortError' || err.message.match(/api.?key|unauthorized|invalid.?key|401/i)) throw err;
+    }
+  }
+  throw new Error(`All models failed. Last error: ${lastErr?.message}`);
+}
+
+async function identifyCardOnce(b64, mime, model) {
+  const prompt = `Identify Pokemon TCG cards in this image. IMPORTANT: If any cards appear circled, highlighted, marked, or annotated (e.g. drawn circles, arrows, sticky notes pointing to specific cards), identify ONLY those marked cards. If no cards are marked, identify all clearly visible cards. Skip any card that is less than 50% visible (e.g. peeking in at the edge or partially behind another card). Return every clearly visible card in the image — do not pick just one as the "main" subject. The image may show a single card, a chat screenshot, or a binder/collection page.
+
+ACCURACY RULES — read these carefully before responding:
+1. Read the card NUMBER at the bottom (e.g. "55/111"). Do not guess it.
+2. Read the SET SYMBOL icon at the bottom right corner — this is the definitive identifier. Do NOT infer the set from artwork or Pokémon type alone.
+3. For MODERN Scarlet & Violet era cards: the specific sub-set name is printed at the bottom of the card. "Scarlet & Violet" alone is ONLY the base set. The sub-sets are distinct: Paldea Evolved, Obsidian Flames, Paradox Rift, Temporal Forces, Twilight Masquerade, Shrouded Fable, Stellar Crown, Surging Sparks, Prismatic Evolutions. Use the specific sub-set name, not just "Scarlet & Violet".
+4. Similarly for Sword & Shield era: Rebel Clash, Darkness Ablaze, Vivid Voltage, Battle Styles, Chilling Reign, Evolving Skies, Fusion Strike, Brilliant Stars, Astral Radiance, Lost Origin, Silver Tempest, Crown Zenith are all distinct sets.
+5. Common vintage sets to distinguish: Base Set, Jungle, Fossil, Neo Genesis, Expedition, EX series, HS Undaunted/Triumphant/Unleashed, Call of Legends, B&W series, XY series, SM series (Sun & Moon), Rising Rivals, Platinum, Great Encounters, etc.
+6. If you cannot clearly read the card number or set symbol, set confidence to "low".
+
+Return ONLY a raw JSON array — no markdown, no code fences, no explanation:
+[
+  {
+    "name": "English card name",
+    "set": "English set name",
+    "number": "card number or null",
+    "rarity": "Common/Uncommon/Rare/Holo Rare/Ultra Rare/etc",
+    "isHolo": false,
+    "isReverse": false,
+    "hp": "HP number or null",
+    "conditionEstimate": "NM or LP or MP or HP",
+    "language": "English or Japanese or Chinese or Other",
+    "confidence": "high or medium or low",
+    "notes": "any notable variant eg Full Art, Alt Art, Promo, or null",
+    "priceNM": TCGplayer NM market price in USD as a number (your best estimate), or null,
+    "priceLP": LP price in USD as a number (your best estimate), or null,
+    "bbox": {"xMin": 0.0, "yMin": 0.0, "xMax": 1.0, "yMax": 1.0}
+  }
+]
+Rules: isHolo=true ONLY if artwork has rainbow/sparkle foil. isReverse=true ONLY if card border is holographic while artwork is matte. Both default to false. bbox values are fractions (0.0–1.0) of image width/height for the card's bounding box. Return one object per card. If only one card, still return a single-element array.`;
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gKey()}`, {
+    method: 'POST',
+    signal: abortCtrl?.signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [
+        { text: prompt },
+        { inline_data: { mime_type: mime, data: b64 } }
+      ]}],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1500 }
+    })
+  });
+
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error?.message || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  // Strip markdown code fences if present
+  const cleaned = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+
+  // Try to parse as array first, then single object (normalize to array)
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+
+  if (arrMatch) {
+    try {
+      const parsed = JSON.parse(arrMatch[0]);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch(e) { /* fall through */ }
+  }
+  if (objMatch) {
+    try {
+      return [JSON.parse(objMatch[0])];
+    } catch(e) {
+      // Salvage partial JSON
+      const extract = (key) => {
+        const r = new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`, 'i');
+        return (objMatch[0].match(r) || [])[1] || null;
+      };
+      const name = extract('name');
+      if (!name) throw new Error('Could not parse card data');
+      return [{
+        name, set: extract('set'), number: extract('number'),
+        rarity: extract('rarity'), isHolo: /true/i.test(objMatch[0].match(/"isHolo"\s*:\s*(\w+)/)?.[1]),
+        isReverse: false, hp: extract('hp'),
+        conditionEstimate: extract('conditionEstimate') || 'LP',
+        language: extract('language') || 'English',
+        confidence: 'medium', notes: extract('notes')
+      }];
+    }
+  }
+  throw new Error('Model said: ' + cleaned.slice(0, 120));
+}
+
+// ─────────────────────────────────────────────
+// POKÉMON TCG API — CROSS-CHECK IDENTIFICATION
+// ─────────────────────────────────────────────
+async function verifyWithTCGAPI(card) {
+  if (!card.name) return card;
+  try {
+    const num = card.number?.split('/')[0];
+    const q = num
+      ? `name:"${card.name}" number:${num}`
+      : `name:"${card.name}"`;
+    const res = await fetch(
+      `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=10`,
+      { signal: abortCtrl?.signal }
+    );
+    if (!res.ok) return card;
+    const { data: results = [] } = await res.json();
+    if (results.length === 0) return card;
+
+    // Score by set name word overlap with Gemini's identified set
+    const geminiWords = (card.set || '').toLowerCase().split(/\W+/).filter(w => w.length > 3);
+    const scored = results.map(r => {
+      const apiSet = (r.set?.name || '').toLowerCase();
+      const overlap = geminiWords.filter(w => apiSet.includes(w)).length;
+      return { r, overlap };
+    }).sort((a, b) => b.overlap - a.overlap);
+
+    // Only override if there's actual set-name word overlap — never blindly substitute
+    const best = scored[0];
+    if (best.overlap === 0) return card;
+
+    const r = best.r;
+    const total = r.set?.printedTotal;
+    return {
+      ...card,
+      name: r.name,
+      set: r.set?.name || card.set,
+      number: total ? `${r.number}/${total}` : (r.number || card.number),
+      rarity: r.rarity || card.rarity,
+      hp: r.hp ? String(r.hp) : card.hp,
+      _tcgVerified: true
+    };
+  } catch(e) {
+    console.warn('TCG verify skipped:', e.message);
+    return card; // silently fall back to Gemini identification
+  }
+}
+
+// ─────────────────────────────────────────────
+// POKEMONPRICETRACKER
+// ─────────────────────────────────────────────
+function selectVariant(hist, card) {
+  if (!hist) return { market: null, lp: null, mp: null };
+  let printing = null;
+  if (card.isReverse && hist['Reverse Holofoil']) printing = hist['Reverse Holofoil'];
+  else if (card.isHolo && hist['Holofoil']) printing = hist['Holofoil'];
+  else printing = hist['Normal'] || Object.values(hist)[0];
+  return {
+    market: printing?.['Near Mint']?.latestPrice ?? null,
+    lp:     printing?.['Lightly Played']?.latestPrice ?? null,
+    mp:     printing?.['Moderately Played']?.latestPrice ?? null,
+  };
+}
+
+async function fetchPricing(card) {
+  const q = [card.name, card.set, card.number].filter(Boolean).join(' ');
+  const res = await fetch(
+    `https://www.pokemonpricetracker.com/api/v2/cards?search=${encodeURIComponent(q)}&limit=1&includeHistory=true`,
+    { headers: { 'Authorization': `Bearer ${pcKey()}` } }
+  );
+  if (!res.ok) {
+    const msg = await res.text().catch(() => res.status);
+    console.warn('PPT API error:', res.status, msg);
+    return null;
+  }
+  const json = await res.json();
+  console.log('PPT response:', json?.data?.length, 'cards, first:', json?.data?.[0]?.name);
+  const item = json.data?.[0];
+  if (!item) return null;
+
+  const hist = item.priceHistory?.variants;
+  const selected = selectVariant(hist, card);
+  return {
+    ...selected,
+    market: selected.market ?? item.prices?.market ?? null,
+    hist, // cached for re-selecting when user toggles holo/rev
+  };
+}
+
+// ─────────────────────────────────────────────
+// SUGGESTED SELL PRICE
+// ─────────────────────────────────────────────
+function suggestPrice(pricing, cond) {
+  const condPrice = cond === 'LP' ? pricing?.lp : cond === 'MP' ? pricing?.mp : null;
+  const market = pricing?.market;
+  if (condPrice) return Math.max(0.25, Math.round(condPrice * 4) / 4);
+  if (!market) return null;
+  const factor = { NM: 0.85, LP: 0.75, MP: 0.60, HP: 0.40 }[cond] || 0.70;
+  return Math.max(0.25, Math.round(market * factor * 4) / 4);
+}
+
+// ─────────────────────────────────────────────
+// BUY LIST MATCHING
+// ─────────────────────────────────────────────
+function matchBuyList(card) {
+  if (!card) return [];
+  const n = (card.name || '').toLowerCase();
+  const s = (card.set  || '').toLowerCase();
+  return BUY_LIST.filter(item => {
+    const iname = item.name.toLowerCase();
+    const iset  = item.set.toLowerCase();
+    const nameMatch = n.includes(iname) || iname.includes(n.split(' ')[0]);
+    const setMatch  = s.includes(iset.split(':').pop().trim().toLowerCase()) ||
+                      iset.includes(s.split(':').pop().trim().toLowerCase()) ||
+                      iset === s;
+    return nameMatch && (setMatch || s === '');
+  });
+}
+
+// ─────────────────────────────────────────────
+// URL BUILDERS
+// ─────────────────────────────────────────────
+function ebayUrl(card) {
+  const q = [card.name, card.number, card.set, 'pokemon card'].filter(Boolean).join(' ');
+  return `https://www.ebay.com/sch/i.html?_nkw=${enc(q)}&LH_Complete=1&LH_Sold=1&_sop=13`;
+}
+function tcgBuyUrl(card) {
+  const q = [card.name, card.set, card.number].filter(Boolean).join(' ');
+  return `https://www.tcgplayer.com/search/pokemon/product?q=${enc(q)}&productLineName=pokemon&condition=lightly+played,moderately+played&view=list&page=1&sort=price_asc`;
+}
+function pcUrl(card) {
+  const q = [card.name, card.set, card.number].filter(Boolean).join(' ');
+  return `https://www.pricecharting.com/search-products?q=${enc(q)}&type=prices`;
+}
+function pptUrl(card) {
+  const q = [card.name, card.set, card.number].filter(Boolean).join(' ');
+  return `https://www.pokemonpricetracker.com/price-guide?q=${enc(q)}`;
+}
+function enc(s) { return encodeURIComponent(s); }
+
+// ─────────────────────────────────────────────
+// UI – RENDER CARDS
+// ─────────────────────────────────────────────
+function addCard(id, data) {
+  const el = document.createElement('div');
+  el.className = 'rcard'; el.id = `rc${id}`;
+  el.innerHTML = renderCard(id, data);
+  document.getElementById('results').appendChild(el);
+}
+function updateCard(id, data) {
+  const el = document.getElementById(`rc${id}`);
+  if (el) el.innerHTML = renderCard(id, data);
+}
+
+function renderCard(id, data) {
+  const thumb = `<img class="rthumb" src="${data.imgUrl}" alt="card">`;
+
+  if (data.loading) return `
+    <div class="rcard-head">
+      ${thumb}
+      <div class="rinfo"><div class="rname">Identifying…</div>
+      <div class="rset"><span class="spin"></span></div></div>
+    </div>`;
+
+  if (data.error) return `
+    <div class="rcard-head">
+      ${thumb}
+      <div class="rinfo"><div class="rname">Could not identify</div>
+      <div class="rtags"><span class="tag tag-warn">${data.error}</span></div></div>
+    </div>`;
+
+  return mode === 'sell' ? renderSell(id, data, thumb) : renderBuy(id, data, thumb);
+}
+
+function renderSell(id, data, thumb) {
+  const c = data.card;
+  const p = data.pricing;
+  const condTag = { NM:'tag-nm', LP:'tag-lp', MP:'tag-mp', HP:'tag-hp' }[c.conditionEstimate] || 'tag-mp';
+  const market = p?.market ?? null;
+  const suggested = suggestPrice(p, c.conditionEstimate);
+  const stored = quoteMap.get(id);
+  const initPrice = stored?.price ?? (suggested || '');
+
+  const warnChip  = c.confidence === 'low' ? `<span class="tag tag-warn">Low confidence</span>` : '';
+  const notesChip = c.notes ? `<span class="tag tag-holo">${c.notes}</span>` : '';
+  const langChip  = c.language && c.language !== 'English' ? `<span class="tag tag-mp">${c.language}</span>` : '';
+  const tcgChip   = c._tcgVerified ? `<span class="tag tag-good">TCG ✓</span>` : '';
+
+  const mktVal  = market    ? `$${market.toFixed(2)}`    : '—';
+  const lpVal   = p?.lp     ? `$${p.lp.toFixed(2)}`      : '—';
+  const sugVal  = suggested ? `$${suggested.toFixed(2)}` : '—';
+
+  const inQuote = quoteMap.has(id);
+  const qBtnCls = inQuote ? 'btn btn-added' : 'btn btn-green';
+  const qBtnTxt = inQuote ? '✓ In Quote' : '+ Quote';
+
+  return `
+    <div class="rcard-head">
+      ${thumb}
+      <div class="rinfo">
+        <div class="rname">${esc(c.name || 'Unknown')}</div>
+        <div class="rset">
+          <input class="set-edit" id="si${id}" value="${esc(c.set || '')}" placeholder="set name"
+            title="Edit set · Enter to re-check"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();correctCard(${id})}">
+          <span>·</span>
+          <input class="num-edit" id="ni${id}" value="${esc(c.number || '')}" placeholder="##/###"
+            title="Edit number · Enter to re-check"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();correctCard(${id})}">
+          ${c.hp ? `<span>· ${c.hp} HP</span>` : ''}
+        </div>
+        <div class="rtags">
+          ${tcgChip}${notesChip}${langChip}${warnChip}
+        </div>
+      </div>
+    </div>
+    <div class="price-grid">
+      <div class="pcell"><div class="plabel">NM${p?.isEstimate ? ' <span class="est-badge">AI est</span>' : ''}</div><div class="pval ${market ? '' : 'dim'}">${mktVal}</div></div>
+      <div class="pcell"><div class="plabel">LP${p?.isEstimate ? ' <span class="est-badge">AI est</span>' : ''}</div><div class="pval ${p?.lp ? '' : 'dim'}">${lpVal}</div></div>
+      <div class="pcell"><div class="plabel">Suggest</div><div class="pval suggest">${sugVal}</div></div>
+    </div>
+    <div class="price-adj">
+      <label for="pi${id}">Your price: $</label>
+      <input type="number" class="price-input" id="pi${id}" value="${initPrice}" step="0.25" min="0" placeholder="0.00"
+             oninput="onPriceEdit(${id})">
+    </div>
+    <div class="action-row">
+      <button class="btn btn-ghost" onclick="openUrl('${ebayUrl(c)}')">eBay Sold</button>
+      <button class="btn btn-ghost" onclick="openUrl('${pcUrl(c)}')">PriceChart</button>
+      <button class="btn btn-ghost" onclick="openUrl('${pptUrl(c)}')">PokePrices</button>
+      <button class="${qBtnCls}" id="qbtn${id}" onclick="toggleQuote(${id})">
+        ${qBtnTxt}
+      </button>
+    </div>`;
+}
+
+function renderBuy(id, data, thumb) {
+  const c = data.card;
+  const p = data.pricing;
+  const matches = matchBuyList(c);
+  const best = matches[0];
+  const market = p?.market ?? null;
+  const lpPrice = p?.lp ?? null;
+  const mpPrice = p?.mp ?? null;
+
+  // Max offer: use buy list avg, or fall back to 50% of LP (typical resale buy rate)
+  const refPrice = lpPrice || market;
+  const maxOffer = best?.avg ?? (refPrice ? Math.max(0.25, Math.round(refPrice * 0.5 * 4) / 4) : null);
+
+  const mktVal   = market   ? `$${market.toFixed(2)}`   : '—';
+  const lpVal    = lpPrice  ? `$${lpPrice.toFixed(2)}`  : '—';
+  const offerVal = maxOffer ? `$${maxOffer.toFixed(2)}`  : '—';
+
+  const matchChip = best
+    ? `<span class="tag tag-good">✓ On buy list</span>`
+    : `<span class="tag tag-mp">Not on buy list</span>`;
+  const warnChip = c.confidence === 'low' ? `<span class="tag tag-warn">Low confidence</span>` : '';
+  const noteChip = best?.note ? `<span class="tag tag-holo">${best.note}</span>` : '';
+  const tcgChip  = c._tcgVerified ? `<span class="tag tag-good">TCG ✓</span>` : '';
+
+  return `
+    <div class="rcard-head">
+      ${thumb}
+      <div class="rinfo">
+        <div class="rname">${esc(c.name || 'Unknown')}</div>
+        <div class="rset">
+          <input class="set-edit" id="si${id}" value="${esc(c.set || '')}" placeholder="set name"
+            title="Edit set · Enter to re-check"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();correctCard(${id})}">
+          <span>·</span>
+          <input class="num-edit" id="ni${id}" value="${esc(c.number || '')}" placeholder="##/###"
+            title="Edit number · Enter to re-check"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();correctCard(${id})}">
+        </div>
+        <div class="rtags">${matchChip}${tcgChip}${noteChip}${warnChip}</div>
+      </div>
+    </div>
+    <div class="price-grid">
+      <div class="pcell"><div class="plabel">NM${p?.isEstimate?' <span class="est-badge">AI est</span>':''}</div><div class="pval ${market?'':'dim'}">${mktVal}</div></div>
+      <div class="pcell"><div class="plabel">LP${p?.isEstimate?' <span class="est-badge">AI est</span>':''}</div><div class="pval ${lpPrice?'':'dim'}">${lpVal}</div></div>
+      <div class="pcell"><div class="plabel">${best ? 'Your Avg' : 'Max Offer'}</div><div class="pval suggest">${offerVal}</div></div>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-ghost" onclick="openUrl('${ebayUrl(c)}')">eBay Sold</button>
+      <button class="btn btn-amber" onclick="openUrl('${tcgBuyUrl(c)}')">LP/MP on TCGplayer →</button>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// QUOTE MANAGEMENT
+// ─────────────────────────────────────────────
+function onPriceEdit(id) {
+  if (quoteMap.has(id)) {
+    const price = parseFloat(document.getElementById(`pi${id}`)?.value) || 0;
+    quoteMap.get(id).price = price;
+    updateQuoteBar();
+  }
+}
+
+function toggleQuote(id) {
+  const cardEl = document.getElementById(`rc${id}`);
+  if (!cardEl) return;
+  const price = parseFloat(document.getElementById(`pi${id}`)?.value) || 0;
+  const nameEl = cardEl.querySelector('.rname');
+  const name = nameEl?.textContent || 'Card';
+
+  if (quoteMap.has(id)) {
+    quoteMap.delete(id);
+    const btn = document.getElementById(`qbtn${id}`);
+    if (btn) { btn.className = 'btn btn-green'; btn.textContent = '+ Quote'; }
+  } else {
+    quoteMap.set(id, { name, price });
+    const btn = document.getElementById(`qbtn${id}`);
+    if (btn) { btn.className = 'btn btn-added'; btn.textContent = '✓ In Quote'; }
+  }
+  updateQuoteBar();
+}
+
+function updateQuoteBar() {
+  const bar = document.getElementById('quoteBar');
+  if (mode !== 'sell' || quoteMap.size === 0) { bar.classList.remove('on'); return; }
+  bar.classList.add('on');
+  const total = [...quoteMap.values()].reduce((s, v) => s + (v.price || 0), 0);
+  document.getElementById('quoteCount').textContent = `${quoteMap.size} card${quoteMap.size > 1 ? 's' : ''}`;
+  document.getElementById('quoteTotal').textContent = `Total: $${total.toFixed(2)}`;
+}
+
+function copyQuote() {
+  const lines = [...quoteMap.values()].map(v => `${v.name}: $${(v.price||0).toFixed(2)}`);
+  const total = [...quoteMap.values()].reduce((s, v) => s + (v.price||0), 0);
+  if (lines.length > 1) lines.push(`\nTotal: $${total.toFixed(2)}`);
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(() => toast('Copied! Paste into Messenger ✓'))
+    .catch(() => {
+      // Fallback for older iOS
+      const ta = document.createElement('textarea');
+      ta.value = lines.join('\n');
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Copied! ✓');
+    });
+}
+
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+function clearResults() {
+  document.getElementById('results').innerHTML = '';
+  quoteMap.clear(); cardMap.clear(); cardCounter = 0;
+  updateQuoteBar();
+}
+function setProc(on, text) {
+  const b = document.getElementById('procBar');
+  b.classList.toggle('on', on);
+  if (text) document.getElementById('procText').textContent = text;
+}
+function openUrl(url) { window.open(url, '_blank'); }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function toB64(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 1536;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      res(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+async function cropFromBbox(imgUrl, bbox) {
+  if (!bbox || typeof bbox.xMin !== 'number') return imgUrl;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const pad = 0.04;
+      const x0 = Math.max(0, bbox.xMin - pad) * img.naturalWidth;
+      const y0 = Math.max(0, bbox.yMin - pad) * img.naturalHeight;
+      const x1 = Math.min(1, bbox.xMax + pad) * img.naturalWidth;
+      const y1 = Math.min(1, bbox.yMax + pad) * img.naturalHeight;
+      const w = x1 - x0, h = y1 - y0;
+      if (w < 20 || h < 20) { resolve(imgUrl); return; }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w); canvas.height = Math.round(h);
+      canvas.getContext('2d').drawImage(img, x0, y0, w, h, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => resolve(imgUrl);
+    img.src = imgUrl;
+  });
+}
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+if (!gKey()) setTimeout(() => toast('Tap ⚙️ to add your Google API key'), 600);
+</script>
+</body>
+</html>
